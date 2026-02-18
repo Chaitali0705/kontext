@@ -1,0 +1,80 @@
+// server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. TEAMS & USERS
+model Team {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  users     User[]
+  contexts  Context[]
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String?
+  teamId    String
+  team      Team       @relation(fields: [teamId], references: [id])
+  decisions Decision[]
+  failures  Failure[]
+}
+
+// 2. CONTEXTS (Projects/Topics)
+model Context {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  teamId      String
+  team        Team       @relation(fields: [teamId], references: [id])
+  decisions   Decision[]
+  failures    Failure[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// 3. DECISION DNA (The Core Moat)
+model Decision {
+  id           String   @id @default(uuid())
+  title        String
+  content      String   // The full text
+  rationale    String   // Why we did it
+  tags         String[] // keywords for search
+  
+  // Moat Factors
+  constraints  String[] // "Budget < $500", "Offline only"
+  alternatives String[] // "Stripe", "PayPal"
+  
+  outcome      String?  // 'success', 'failure', 'pending'
+  
+  contextId    String
+  context      Context  @relation(fields: [contextId], references: [id])
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id])
+  
+  createdAt    DateTime @default(now())
+}
+
+// 4. FAILURE LIBRARY (Learning from Mistakes)
+model Failure {
+  id           String   @id @default(uuid())
+  title        String
+  whatFailed   String
+  whyFailed    String
+  costEstimate Int?     // Hours lost
+  
+  contextId    String
+  context      Context  @relation(fields: [contextId], references: [id])
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id])
+  
+  createdAt    DateTime @default(now())
+}

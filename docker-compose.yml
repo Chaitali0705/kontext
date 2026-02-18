@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # The Brain: PostgreSQL with Vector Support
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: kontext_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: kontext
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kontext-network
+
+  # The Cache: Redis (Optional for now, but good for production sessions)
+  redis:
+    image: redis:alpine
+    container_name: kontext_cache
+    ports:
+      - "6379:6379"
+    networks:
+      - kontext-network
+
+volumes:
+  postgres_data:
+
+networks:
+  kontext-network:
+    driver: bridge
