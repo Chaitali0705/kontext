@@ -43,24 +43,27 @@ model Context {
 
 // 3. DECISION DNA (The Core Moat)
 model Decision {
-  id           String   @id @default(uuid())
-  title        String
-  content      String   // The full text
-  rationale    String   // Why we did it
-  tags         String[] // keywords for search
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  rationale   String
+  tags        String[]
   
-  // Moat Factors
-  constraints  String[] // "Budget < $500", "Offline only"
-  alternatives String[] // "Stripe", "PayPal"
-  
-  outcome      String?  // 'success', 'failure', 'pending'
-  
-  contextId    String
-  context      Context  @relation(fields: [contextId], references: [id])
-  authorId     String
-  author       User     @relation(fields: [authorId], references: [id])
-  
+  // --- NEW CONSTRAINT FIELDS ---
+  status      String   @default("active") // "active", "warning", "deprecated"
+  constraints String[] // Array of strings e.g., ["Under 1000 users", "US-only"]
+  brokenRules String[] // Array to track which constraints were invalidated
+  // -----------------------------
+
+  alternatives String[]
+  outcome      String   @default("pending")
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contextId   String
+  context     Context  @relation(fields: [contextId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
 }
 
 // 4. FAILURE LIBRARY (Learning from Mistakes)

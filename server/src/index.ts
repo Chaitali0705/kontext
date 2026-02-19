@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import contextRoutes from './routes/contextRoutes';
 import decisionRoutes from './routes/decisionRoutes';
+import failureRoutes from './routes/failureRoutes';
 
 dotenv.config();
 
@@ -18,7 +19,9 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use('/api/contexts', contextRoutes);
 app.use('/api/decisions', decisionRoutes);
-
+app.use('/api/contexts', contextRoutes);
+app.use('/api/decisions', decisionRoutes);
+app.use('/api/failures', failureRoutes);
 app.use('/api/contexts', contextRoutes);
 
 // Health Check
