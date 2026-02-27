@@ -23,7 +23,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
             });
         }
         
-        const onboardingStep = (user as any).onboardingStep ?? (user.onboardingCompletedAt ? 4 : 1);
+        const onboardingStep = (user as any).onboardingStep ?? ((user as any).onboardingCompletedAt ? 4 : 1);
         return sendSuccess(req, res, { ...user, onboardingStep }, 'Current user fetched');
     } catch (error) {
         console.error(error);
@@ -82,7 +82,7 @@ export const patchOnboarding = async (req: Request, res: Response) => {
             {
                 userId: user.id,
                 step,
-                completed: !!user.onboardingCompletedAt
+                completed: !!(user as any).onboardingCompletedAt
             },
             'Onboarding updated'
         );

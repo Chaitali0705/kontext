@@ -15,6 +15,7 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "5.10.0",
+    "@supabase/supabase-js": "^2.98.0",
     "compute-cosine-similarity": "^1.1.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

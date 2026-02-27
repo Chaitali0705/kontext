@@ -23,11 +23,19 @@ export default function TeamManagementPage() {
     }
   }, [contextId, store.contexts, store.activeContext?.id]);
 
+  // Intelligent Routing: Respecting your friend's flow!
   useEffect(() => {
-    if (store.activeContext?.teamId) {
-      store.fetchTeamMembers(store.activeContext.teamId);
+    if (store.currentUser && !store.isLoading) {
+      // 1. If they have no projects, send them to your friend's Project Creation flow
+      if (store.contexts.length === 0) {
+        navigate('/create-project');
+      } 
+      // 2. If they already have a project, send them to the Dashboard
+      else if (store.activeContext) {
+        navigate(`/dashboard/${store.activeContext.id}`);
+      }
     }
-  }, [store.activeContext?.teamId]);
+  }, [store.currentUser, store.activeContext, store.contexts.length, store.isLoading, navigate]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -11,6 +11,7 @@ import teamRoutes from './routes/teamRoutes';
 import userRoutes from './routes/userRoutes';
 import metricsRoutes from './routes/metricsRoutes';
 import graphRoutes from './routes/graphRoutes';
+import authRoutes from './routes/authRoutes';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+app.use('/api/auth', authRoutes);
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
