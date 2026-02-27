@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { sendError, sendSuccess } from '../utils/http';
 
 const prisma = new PrismaClient();
 
@@ -11,9 +12,9 @@ export const getFailures = async (req: Request, res: Response) => {
         orderBy: { createdAt: 'desc' },
         include: { author: { select: { name: true } } }
         });
-        res.json(failures);
+        return sendSuccess(req, res, failures, 'Failures fetched');
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch failures' });
+        return sendError(req, res, 500, 'Failed to fetch failures');
     }
 };
 
@@ -23,7 +24,7 @@ export const createFailure = async (req: Request, res: Response) => {
         // Automatically find our seeded user (Alice Engineer)
         const user = await prisma.user.findFirst();
         
-        if (!user) throw new Error("No users found in database");
+        if (!user) return sendError(req, res, 404, 'User not found');
 
         const failure = await prisma.failure.create({
         data: {
@@ -35,9 +36,24 @@ export const createFailure = async (req: Request, res: Response) => {
             authorId: user.id // Use the REAL database ID
         }
         });
-        res.json(failure);
+        return sendSuccess(req, res, failure, 'Failure logged');
     } catch (error) {
         console.error("🔥 FAILURE SAVE ERROR:", error);
-        res.status(500).json({ error: 'Failed to log failure' });
+        return sendError(req, res, 500, 'Failed to log failure');
+    }
+};
+
+export const deleteFailure = async (req: Request, res: Response) => {
+    const failureId = String(req.params.failureId);
+    
+    try {
+        const failure = await prisma.failure.findUnique({ where: { id: failureId } });
+        if (!failure) return sendError(req, res, 404, 'Failure not found');
+
+        await prisma.failure.delete({ where: { id: failureId } });
+        return sendSuccess(req, res, { id: failureId }, 'Failure deleted');
+    } catch (error) {
+        console.error("🔥 DELETE FAILURE ERROR:", error);
+        return sendError(req, res, 500, 'Failed to delete failure');
     }
 };

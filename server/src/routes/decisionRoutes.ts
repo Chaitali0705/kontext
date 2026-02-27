@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { getDecisions, createDecision, invalidateConstraint } from '../controllers/decisionController';
+import { getDecisions, createDecision, getSimilarDecisions, invalidateConstraint, deleteDecision } from '../controllers/decisionController';
 
 const router = Router();
 
 router.get('/', getDecisions);
+router.get('/similar', getSimilarDecisions);
 router.post('/', createDecision);
-router.post('/:decisionId/invalidate', invalidateConstraint); // <-- NEW ROUTE
+router.post('/:decisionId/invalidate', invalidateConstraint);
+router.delete('/:decisionId', deleteDecision);
 
 export default router;
