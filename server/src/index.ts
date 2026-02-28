@@ -11,7 +11,6 @@ import teamRoutes from './routes/teamRoutes';
 import userRoutes from './routes/userRoutes';
 import metricsRoutes from './routes/metricsRoutes';
 import graphRoutes from './routes/graphRoutes';
-import authRoutes from './routes/authRoutes';
 
 dotenv.config();
 
@@ -19,7 +18,6 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use('/api/auth', authRoutes);
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
@@ -34,7 +32,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/metrics', metricsRoutes);
-app.use('/api/graph', graphRoutes);
+app.use('/api/graphs', graphRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

@@ -49,7 +49,7 @@ interface ContextState {
 }
 
 export const useContextStore = create<ContextState>((set, get) => ({
-    currentUser: null, contexts: [], activeContext: null, teamMembers: [], decisions: [], failures: [], isLoading: false, onboardingCompleted: false, authError: null, grokInsights: null, isGeneratingInsights: false,
+    currentUser: null, contexts: [], activeContext: null, teamMembers: [], decisions: [], failures: [], isLoading: false, onboardingCompleted: false, authError: null, grokInsights: null, isGeneratingInsights: false, graphInsights: null, isGeneratingGraphInsights: false,
 
     // ===== AUTH =====
     login: async (data) => {
@@ -244,6 +244,56 @@ export const useContextStore = create<ContextState>((set, get) => ({
             set({ 
                 isGeneratingInsights: false, 
                 grokInsights: `❌ ${error.message}` 
+            });
+        }
+    },
+
+    // ===== GRAPH AI (GROQ) =====
+    generateGraphInsights: async () => {
+        const state = get();
+        if (!state.activeContext) return;
+
+        set({ isGeneratingGraphInsights: true, graphInsights: null });
+
+        const prompt = `You are an AI analyzing a knowledge graph for a software project named "${state.activeContext.name}". 
+        The graph contains the following nodes:
+        Decisions Made: ${state.decisions.map(d => d.title).join(', ')}
+        Failures Logged: ${state.failures.map(f => f.title).join(', ')}
+        
+        Analyze the implicit relationships between these nodes. What is the overarching story of this architecture? What hidden patterns connect these decisions and failures? 
+        Keep your response to two short, highly analytical paragraphs formatted in markdown.`;
+
+        try {
+            // 👇 CHANGED: Pointing directly to Groq's real server, bypassing Vite entirely!
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer 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` // 🔴 Keep your real Groq key here!
+                },
+                body: JSON.stringify({
+                    model: "openai/gpt-oss-120b", 
+                    messages: [
+                        { role: "system", content: "You are a sharp graph data analyst." },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`API Rejected: ${errText}`);
+            }
+            
+            const data = await res.json();
+            set({ graphInsights: data.choices[0].message.content, isGeneratingGraphInsights: false });
+            
+        } catch (error: any) {
+            console.error("GRAPH AI ERROR:", error);
+            set({ 
+                isGeneratingGraphInsights: false, 
+                graphInsights: `❌ ${error.message}` 
             });
         }
     },
