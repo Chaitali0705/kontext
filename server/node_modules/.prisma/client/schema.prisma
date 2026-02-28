@@ -19,13 +19,15 @@ model Team {
 }
 
 model User {
-  id        String     @id @default(uuid())
-  email     String     @unique
-  name      String?
-  teamId    String
-  team      Team       @relation(fields: [teamId], references: [id])
-  decisions Decision[]
-  failures  Failure[]
+  id                      String     @id @default(uuid())
+  email                   String     @unique
+  name                    String?
+  teamId                  String
+  team                    Team       @relation(fields: [teamId], references: [id])
+  decisions               Decision[]
+  failures                Failure[]
+  onboardingStep          Int        @default(1)
+  onboardingCompletedAt   DateTime?
 }
 
 // 2. CONTEXTS (Projects/Topics)
@@ -75,7 +77,7 @@ model Failure {
   costEstimate Int?     // Hours lost
   
   contextId    String
-  context      Context  @relation(fields: [contextId], references: [id])
+  context      Context  @relation(fields: [contextId], references: [id], onDelete: Cascade)
   authorId     String
   author       User     @relation(fields: [authorId], references: [id])
   
