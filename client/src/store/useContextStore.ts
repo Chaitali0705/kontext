@@ -22,11 +22,20 @@ interface ContextState {
     isLoading: boolean;
     onboardingCompleted: boolean;
     authError: string | null;
-    // Add these under onboardingCompleted
+    
+    // AI States
     grokInsights: string | null;
     isGeneratingInsights: boolean;
-    generateGrokInsights: () => Promise<void>;
+    graphInsights: string | null;
+    isGeneratingGraphInsights: boolean;
+    contextSummary: string | null;
+    isGeneratingContextSummary: boolean;
 
+    // Actions
+    generateGrokInsights: () => Promise<void>;
+    generateGraphInsights: () => Promise<void>;
+    generateContextSummary: () => Promise<void>;
+    
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
     logout: () => Promise<void>;
@@ -49,7 +58,21 @@ interface ContextState {
 }
 
 export const useContextStore = create<ContextState>((set, get) => ({
-    currentUser: null, contexts: [], activeContext: null, teamMembers: [], decisions: [], failures: [], isLoading: false, onboardingCompleted: false, authError: null, grokInsights: null, isGeneratingInsights: false, graphInsights: null, isGeneratingGraphInsights: false,
+    currentUser: null, 
+    contexts: [], 
+    activeContext: null, 
+    teamMembers: [], 
+    decisions: [], 
+    failures: [], 
+    isLoading: false, 
+    onboardingCompleted: false, 
+    authError: null, 
+    grokInsights: null, 
+    isGeneratingInsights: false, 
+    graphInsights: null, 
+    isGeneratingGraphInsights: false,
+    contextSummary: null,
+    isGeneratingContextSummary: false,
 
     // ===== AUTH =====
     login: async (data) => {
@@ -91,7 +114,6 @@ export const useContextStore = create<ContextState>((set, get) => ({
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { set({ isLoading: false }); return; }
 
-        // 👈 BUG FIXED: Now we only fetch projects owned by THIS specific user
         const { data } = await supabase.from('contexts')
             .select('*')
             .eq('user_id', session.user.id) 
@@ -104,7 +126,6 @@ export const useContextStore = create<ContextState>((set, get) => ({
             get().fetchDecisions(data[0].id);
             get().fetchFailures(data[0].id);
         } else if (data && data.length === 0) {
-            // Ensure we clear active context if they have no projects
             set({ activeContext: null, decisions: [], failures: [] });
         }
     },
@@ -122,7 +143,6 @@ export const useContextStore = create<ContextState>((set, get) => ({
         set({ isLoading: true });
         const { data: { session } } = await supabase.auth.getSession();
         
-        // 👈 ATTACH PROJECT TO THE USER
         const { data, error } = await supabase.from('contexts').insert({ 
             name, 
             description,
@@ -185,14 +205,14 @@ export const useContextStore = create<ContextState>((set, get) => ({
     // ===== ONBOARDING =====
     markOnboardingComplete: async () => { set({ onboardingCompleted: true }); },
     updateOnboardingStep: async () => { /* Handle local storage if needed */ },
-    // ===== AI INSIGHTS (GROK) =====
+    
+    // ===== AI INSIGHTS (GROK/GROQ) =====
     generateGrokInsights: async () => {
         const state = get();
         if (!state.activeContext) return;
 
         set({ isGeneratingInsights: true, grokInsights: null });
 
-        // We bundle up the context for Grok to read
         const prompt = `You are a Principal Software Engineer analyzing a team's institutional memory. 
         Project Name: ${state.activeContext.name}
         
@@ -205,16 +225,13 @@ export const useContextStore = create<ContextState>((set, get) => ({
         Based on this data, provide 3 brief, high-value, and slightly candid architectural insights or warnings for this team. Format as a short markdown list.`;
 
         try {
-            // 👈 1. Notice the URL changed to our new /groq-api proxy
             const res = await fetch('/groq-api/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // 👈 2. PASTE YOUR GROQ KEY HERE (keep the backticks and Bearer word!)
                     'Authorization': `Bearer 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` 
                 },
                 body: JSON.stringify({
-                    // 👈 3. Swapped to Llama 3 8B (insanely fast for hackathons)
                     model: "openai/gpt-oss-120b", 
                     messages: [
                         { role: "system", content: "You are a sharp, analytical AI engineering manager." },
@@ -236,7 +253,6 @@ export const useContextStore = create<ContextState>((set, get) => ({
             }
             
             const data = await res.json();
-            // We keep the variable named grokInsights so we don't have to rewrite your UI code!
             set({ grokInsights: data.choices[0].message.content, isGeneratingInsights: false });
             
         } catch (error: any) {
@@ -264,12 +280,11 @@ export const useContextStore = create<ContextState>((set, get) => ({
         Keep your response to two short, highly analytical paragraphs formatted in markdown.`;
 
         try {
-            // 👇 CHANGED: Pointing directly to Groq's real server, bypassing Vite entirely!
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer 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` // 🔴 Keep your real Groq key here!
+                    'Authorization': `Bearer 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`
                 },
                 body: JSON.stringify({
                     model: "openai/gpt-oss-120b", 
@@ -297,5 +312,60 @@ export const useContextStore = create<ContextState>((set, get) => ({
             });
         }
     },
+
+    // ===== CONTEXT AI ONBOARDING SUMMARY =====
+    generateContextSummary: async () => {
+        const state = get();
+        if (!state.activeContext) return;
+
+        set({ isGeneratingContextSummary: true, contextSummary: null });
+
+        const prompt = `You are an AI engineering manager helping onboard a new team member. 
+        Project: ${state.activeContext.name}
+        Description: ${state.activeContext.description || 'No description provided.'}
+        
+        Decisions Made:
+        ${state.decisions.map(d => `- ${d.title}: ${d.rationale}`).join('\n')}
+        
+        Failures Logged:
+        ${state.failures.map(f => `- ${f.title}: Failed because ${f.whyFailed}`).join('\n')}
+        
+        Based on this, write a clear, comprehensive, and structured onboarding summary for a new developer joining the team. Explain what the project is, the key architectural decisions they need to know, and the pitfalls (failures) to avoid. Format in markdown with clear headings.`;
+
+        try {
+            // Using the direct Groq API endpoint you had in generateGraphInsights
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer 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`
+                },
+                body: JSON.stringify({
+                    model: "openai/gpt-oss-120b", 
+                    messages: [
+                        { role: "system", content: "You are a helpful technical onboarding assistant." },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.5
+                })
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`API Rejected: ${errText}`);
+            }
+            
+            const data = await res.json();
+            set({ contextSummary: data.choices[0].message.content, isGeneratingContextSummary: false });
+            
+        } catch (error: any) {
+            console.error("CONTEXT AI ERROR:", error);
+            set({ 
+                isGeneratingContextSummary: false, 
+                contextSummary: `❌ Failed to generate onboarding summary: ${error.message}` 
+            });
+        }
+    },
+
     hasData: () => { const state = get(); return state.decisions.length > 0 || state.failures.length > 0; }
 }));
