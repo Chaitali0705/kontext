@@ -30,7 +30,7 @@ export const getFailures = async (req: Request, res: Response) => {
 };
 
 export const createFailure = async (req: Request, res: Response) => {
-    const { title, whatFailed, whyFailed, costEstimate, contextId } = req.body;
+    const { title, whatFailed, whyFailed, contextId } = req.body;
     
     // Input validation
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
@@ -48,12 +48,7 @@ export const createFailure = async (req: Request, res: Response) => {
     if (!contextId || typeof contextId !== 'string') {
         return sendError(req, res, 400, 'Context ID is required');
     }
-    
-    const cost = Number(costEstimate) || 0;
-    if (cost < 0 || cost > 10000000) {
-        return sendError(req, res, 400, 'Cost estimate must be between 0 and 10,000,000');
-    }
-    
+
     try {
         // Automatically find our seeded user (Alice Engineer)
         const user = await prisma.user.findFirst();
@@ -65,7 +60,6 @@ export const createFailure = async (req: Request, res: Response) => {
                 title: title.trim(),
                 whatFailed: whatFailed.trim(),
                 whyFailed: whyFailed.trim(),
-                costEstimate: cost,
                 contextId: contextId.trim(),
                 authorId: user.id
             },

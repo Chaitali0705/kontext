@@ -38,6 +38,16 @@ export const metricsService = {
   get: async (projectId: string): Promise<Metrics> => {
     const response = await api.get('/metrics', { params: { projectId } });
     return response.data?.data ?? response.data;
+  },
+
+  getProjectContext: async (projectId: string): Promise<any> => {
+    const response = await api.get('/metrics/context/generate', { params: { projectId } });
+    return response.data?.data ?? response.data;
+  },
+
+  getProjectInsights: async (projectId: string): Promise<any> => {
+    const response = await api.get('/metrics/insights/generate', { params: { projectId } });
+    return response.data?.data ?? response.data;
   }
 };
 

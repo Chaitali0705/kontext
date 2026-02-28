@@ -51,6 +51,7 @@ export interface Metrics {
     timeSavedDays: number;
     graphDensity: number;
     mostConnectedNode?: { signature: string; count: number } | null;
+    busFactor?: number;
     insights: MetricsInsight[];
 }
 

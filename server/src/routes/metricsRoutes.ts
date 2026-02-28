@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { getMetrics } from '../controllers/metricsController';
+import { getMetrics, generateProjectContext, generateProjectInsights } from '../controllers/metricsController';
 
 const router = Router();
 
 router.get('/', getMetrics);
+router.get('/context/generate', generateProjectContext);
+router.get('/insights/generate', generateProjectInsights);
 
 export default router;

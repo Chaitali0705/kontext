@@ -15,21 +15,41 @@ const http_1 = require("../utils/http");
 const prisma = new client_1.PrismaClient();
 const getFailures = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { contextId } = req.query;
+    if (!contextId) {
+        return (0, http_1.sendError)(req, res, 400, 'Context ID is required');
+    }
     try {
         const failures = yield prisma.failure.findMany({
             where: { contextId: String(contextId) },
             orderBy: { createdAt: 'desc' },
-            include: { author: { select: { name: true } } }
+            include: { author: { select: { name: true, id: true } } }
         });
-        return (0, http_1.sendSuccess)(req, res, failures, 'Failures fetched');
+        if (failures.length === 0) {
+            return (0, http_1.sendSuccess)(req, res, [], 'No failures logged for this project');
+        }
+        return (0, http_1.sendSuccess)(req, res, failures, 'Failures fetched successfully');
     }
     catch (error) {
+        console.error('GET FAILURES ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to fetch failures');
     }
 });
 exports.getFailures = getFailures;
 const createFailure = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { title, whatFailed, whyFailed, costEstimate, contextId } = req.body;
+    const { title, whatFailed, whyFailed, contextId } = req.body;
+    // Input validation
+    if (!title || typeof title !== 'string' || title.trim().length < 3) {
+        return (0, http_1.sendError)(req, res, 400, 'Title must be at least 3 characters long');
+    }
+    if (!whatFailed || typeof whatFailed !== 'string' || whatFailed.trim().length < 10) {
+        return (0, http_1.sendError)(req, res, 400, 'What Failed description must be at least 10 characters long');
+    }
+    if (!whyFailed || typeof whyFailed !== 'string' || whyFailed.trim().length < 10) {
+        return (0, http_1.sendError)(req, res, 400, 'Why Failed explanation must be at least 10 characters long');
+    }
+    if (!contextId || typeof contextId !== 'string') {
+        return (0, http_1.sendError)(req, res, 400, 'Context ID is required');
+    }
     try {
         // Automatically find our seeded user (Alice Engineer)
         const user = yield prisma.user.findFirst();
@@ -37,19 +57,19 @@ const createFailure = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             return (0, http_1.sendError)(req, res, 404, 'User not found');
         const failure = yield prisma.failure.create({
             data: {
-                title,
-                whatFailed,
-                whyFailed,
-                costEstimate: Number(costEstimate) || 0, // Fallback to 0 if left blank
-                contextId,
-                authorId: user.id // Use the REAL database ID
-            }
+                title: title.trim(),
+                whatFailed: whatFailed.trim(),
+                whyFailed: whyFailed.trim(),
+                contextId: contextId.trim(),
+                authorId: user.id
+            },
+            include: { author: { select: { name: true, id: true } } }
         });
-        return (0, http_1.sendSuccess)(req, res, failure, 'Failure logged');
+        return (0, http_1.sendSuccess)(req, res, failure, 'Failure logged successfully');
     }
     catch (error) {
         console.error("🔥 FAILURE SAVE ERROR:", error);
-        return (0, http_1.sendError)(req, res, 500, 'Failed to log failure');
+        return (0, http_1.sendError)(req, res, 500, 'Failed to log failure. Please try again.');
     }
 });
 exports.createFailure = createFailure;

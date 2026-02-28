@@ -35,7 +35,6 @@ interface Failure {
     title: string;
     whatFailed: string;
     whyFailed: string;
-    costEstimate?: number;
     author?: { name: string };
     createdAt: string;
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Layers, Plus, Users, X, Menu, Share2, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Layers, Plus, Users, X, Menu, Share2, CheckCircle, AlertTriangle, TrendingUp, BookOpen } from 'lucide-react';
 import { useContextStore } from '../store/useContextStore';
 import clsx from 'clsx';
 import DecisionModal from './DecisionModal';
@@ -169,6 +169,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             >
                                 <AlertTriangle className="w-5 h-5 shrink-0" />
                                 {sidebarOpen && <span className="text-sm font-semibold">Log Failure</span>}
+                            </button>
+
+                            <button
+                                onClick={() => navigate(`/context/${activeContext.id}`)}
+                                className={clsx(
+                                    "w-full px-4 py-3 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98]",
+                                    sidebarOpen ? "justify-start" : "justify-center",
+                                    isActive('/context') ? "bg-white shadow-sm" : ""
+                                )}
+                                style={{
+                                    color: isActive('/context') ? '#FF9500' : '#8E8E93'
+                                }}
+                                title={sidebarOpen ? undefined : "Project Context"}
+                            >
+                                <BookOpen className="w-5 h-5 shrink-0" />
+                                {sidebarOpen && <span className="text-sm font-semibold">Context</span>}
                             </button>
 
                             <button

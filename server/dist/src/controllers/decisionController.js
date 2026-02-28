@@ -15,46 +15,70 @@ const http_1 = require("../utils/http");
 const prisma = new client_1.PrismaClient();
 const getDecisions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { contextId } = req.query;
+    if (!contextId) {
+        return (0, http_1.sendError)(req, res, 400, 'Context ID is required');
+    }
     try {
         const decisions = yield prisma.decision.findMany({
             where: { contextId: String(contextId) },
             orderBy: { createdAt: 'desc' },
-            include: { author: { select: { name: true } } }
+            include: { author: { select: { name: true, id: true } } }
         });
-        return (0, http_1.sendSuccess)(req, res, decisions, 'Decisions fetched');
+        if (decisions.length === 0) {
+            return (0, http_1.sendSuccess)(req, res, [], 'No decisions found for this project');
+        }
+        return (0, http_1.sendSuccess)(req, res, decisions, 'Decisions fetched successfully');
     }
     catch (error) {
+        console.error('GET DECISIONS ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to fetch decisions');
     }
 });
 exports.getDecisions = getDecisions;
 const createDecision = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { title, content, rationale, tags, constraints, alternatives, contextId, timeSavedHours } = req.body;
+    // Input validation
+    if (!title || !content || !rationale || !contextId) {
+        return (0, http_1.sendError)(req, res, 400, 'Title, content, rationale, and contextId are required');
+    }
+    if (title.trim().length < 3) {
+        return (0, http_1.sendError)(req, res, 400, 'Title must be at least 3 characters');
+    }
+    if (content.trim().length < 10) {
+        return (0, http_1.sendError)(req, res, 400, 'Decision content must be at least 10 characters');
+    }
+    if (rationale.trim().length < 10) {
+        return (0, http_1.sendError)(req, res, 400, 'Rationale must be at least 10 characters');
+    }
+    if (timeSavedHours && (timeSavedHours < 0 || timeSavedHours > 1000)) {
+        return (0, http_1.sendError)(req, res, 400, 'Time saved must be between 0 and 1000 hours');
+    }
     try {
         const user = yield prisma.user.findFirst();
         if (!user)
             return (0, http_1.sendError)(req, res, 404, 'User not found');
         const decision = yield prisma.decision.create({
             data: {
-                title,
-                content,
-                rationale,
-                tags: tags || [],
-                constraints: constraints || [],
+                title: title.trim(),
+                content: content.trim(),
+                rationale: rationale.trim(),
+                tags: Array.isArray(tags) ? tags.filter(t => typeof t === 'string' && t.trim()) : [],
+                constraints: Array.isArray(constraints) ? constraints.filter(c => typeof c === 'string' && c.trim()) : [],
                 brokenRules: [],
                 status: 'active',
                 contextId,
                 authorId: user.id,
-                alternatives: alternatives || [],
+                alternatives: Array.isArray(alternatives) ? alternatives.filter(a => typeof a === 'string' && a.trim()) : [],
                 outcome: 'pending',
-                timeSavedHours: timeSavedHours || 0
-            }
+                timeSavedHours: timeSavedHours && timeSavedHours > 0 ? parseInt(timeSavedHours) : 0
+            },
+            include: { author: { select: { name: true } } }
         });
-        return (0, http_1.sendSuccess)(req, res, decision, 'Decision logged');
+        return (0, http_1.sendSuccess)(req, res, decision, 'Decision logged successfully');
     }
     catch (error) {
         console.error('DECISION SAVE ERROR:', error);
-        return (0, http_1.sendError)(req, res, 500, 'Failed to log decision');
+        return (0, http_1.sendError)(req, res, 500, 'Failed to log decision. Please try again.');
     }
 });
 exports.createDecision = createDecision;

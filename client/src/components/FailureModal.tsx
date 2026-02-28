@@ -11,7 +11,6 @@ interface FailureModalProps {
 export default function FailureModal({ isOpen, onClose, onSubmit, isLoading = false }: FailureModalProps) {
   const [whatFailed, setWhatFailed] = useState('');
   const [whyFailed, setWhyFailed] = useState('');
-  const [cost, setCost] = useState('');
   const [learning, setLearning] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -29,12 +28,10 @@ export default function FailureModal({ isOpen, onClose, onSubmit, isLoading = fa
       title,
       whatFailed: whatFailed.trim(),
       whyFailed: learning.trim() ? `${whyFailed.trim()}\nLearning: ${learning.trim()}` : whyFailed.trim(),
-      costEstimate: cost ? parseInt(cost, 10) : 0,
       learning: learning.trim() || undefined
     });
     setWhatFailed('');
     setWhyFailed('');
-    setCost('');
     setLearning('');
     onClose();
   };
@@ -67,17 +64,6 @@ export default function FailureModal({ isOpen, onClose, onSubmit, isLoading = fa
               value={whyFailed}
               onChange={(e) => setWhyFailed(e.target.value)}
               rows={3}
-              className="w-full bg-white border border-black/10 rounded-xl px-3 py-2.5 text-[#1C1C1E] focus:outline-none focus:border-[#FF3B30]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1C1C1E] mb-2">Cost (hours)</label>
-            <input
-              type="number"
-              min="0"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
               className="w-full bg-white border border-black/10 rounded-xl px-3 py-2.5 text-[#1C1C1E] focus:outline-none focus:border-[#FF3B30]"
             />
           </div>

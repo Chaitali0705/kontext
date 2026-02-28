@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendError, sendSuccess } from '../utils/http';
+import { generateAISummary } from '../utils/llmService';
 
 const prisma = new PrismaClient();
 
@@ -166,5 +167,228 @@ export const getMetrics = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('METRICS ERROR:', error);
         return sendError(req, res, 500, 'Failed to fetch metrics');
+    }
+};
+
+// Generate AI-powered project context for onboarding
+export const generateProjectContext = async (req: Request, res: Response) => {
+    const projectId = String(req.query.projectId || req.query.contextId || '');
+    if (!projectId) {
+        return sendError(req, res, 400, 'Project ID is required');
+    }
+
+    try {
+        // Fetch project context
+        const context = await prisma.context.findUnique({
+            where: { id: projectId },
+            include: { team: true }
+        });
+
+        if (!context) {
+            return sendError(req, res, 404, 'Project not found');
+        }
+
+        // Fetch all related data
+        const [decisions, failures, team] = await Promise.all([
+            prisma.decision.findMany({
+                where: { contextId: projectId },
+                include: { author: { select: { name: true, email: true } } },
+                take: 50
+            }),
+            prisma.failure.findMany({
+                where: { contextId: projectId },
+                include: { author: { select: { name: true, email: true } } },
+                take: 30
+            }),
+            prisma.user.findMany({
+                where: { teamId: context.teamId || '' }
+            })
+        ]);
+
+        // Extract key information
+        const uniqueTags = new Set<string>();
+        const uniqueConstraints = new Set<string>();
+        decisions.forEach(d => {
+            d.tags?.forEach(t => uniqueTags.add(t));
+            d.constraints?.forEach(c => uniqueConstraints.add(c));
+        });
+
+        const topDecisions = decisions.slice(0, 5).map(d => d.title).join(', ');
+        const topFailures = failures.slice(0, 5).map(f => f.title).join(', ');
+
+        // Generate AI-powered context summary
+        const contextSummary = await generateAISummary({
+            text: `Project: ${context.name}. Description: ${context.description || 'No description'}. Key decisions: ${topDecisions || 'None yet'}. Documented failures: ${topFailures || 'None yet'}. Team size: ${team.length}. Key focus areas: ${Array.from(uniqueTags).slice(0, 5).join(', ') || 'General'}`,
+            maxWords: 50,
+            context: 'general'
+        });
+
+        return sendSuccess(
+            req,
+            res,
+            {
+                projectId,
+                projectName: context.name,
+                projectDescription: context.description,
+                contextSummary,
+                statistics: {
+                    totalDecisions: decisions.length,
+                    totalFailures: failures.length,
+                    teamSize: team.length,
+                    tagsCount: uniqueTags.size,
+                    constraintsCount: uniqueConstraints.size
+                },
+                topTags: Array.from(uniqueTags).slice(0, 10),
+                topConstraints: Array.from(uniqueConstraints).slice(0, 10),
+                recentDecisions: decisions.slice(0, 5).map(d => ({
+                    id: d.id,
+                    title: d.title,
+                    author: d.author?.name || 'Unknown',
+                    createdAt: d.createdAt
+                })),
+                recentFailures: failures.slice(0, 5).map(f => ({
+                    id: f.id,
+                    title: f.title,
+                    author: f.author?.name || 'Unknown',
+                    createdAt: f.createdAt
+                })),
+                teamMembers: team.map(m => ({
+                    id: m.id,
+                    email: m.email,
+                    name: m.name
+                }))
+            },
+            'Project context generated'
+        );
+    } catch (error) {
+        console.error('PROJECT CONTEXT ERROR:', error);
+        return sendError(req, res, 500, 'Failed to generate project context');
+    }
+};
+
+// Generate AI-powered insights for project decisions
+export const generateProjectInsights = async (req: Request, res: Response) => {
+    const projectId = String(req.query.projectId || req.query.contextId || '');
+    if (!projectId) {
+        return sendError(req, res, 400, 'Project ID is required');
+    }
+
+    try {
+        // Fetch all decisions and failures
+        const [decisions, failures] = await Promise.all([
+            prisma.decision.findMany({
+                where: { contextId: projectId }
+            }),
+            prisma.failure.findMany({
+                where: { contextId: projectId }
+            })
+        ]);
+
+        // Analyze patterns
+        const tagFrequency = new Map<string, number>();
+        const constraintFrequency = new Map<string, number>();
+
+        decisions.forEach(d => {
+            d.tags?.forEach(t => tagFrequency.set(t, (tagFrequency.get(t) || 0) + 1));
+            d.constraints?.forEach(c => constraintFrequency.set(c, (constraintFrequency.get(c) || 0) + 1));
+        });
+
+        const topTags = Array.from(tagFrequency.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([tag, count]) => ({ tag, count }));
+
+        const topConstraints = Array.from(constraintFrequency.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([constraint, count]) => ({ constraint, count }));
+
+        // Generate insights based on patterns
+        const insightsList: any[] = [];
+
+        // Pattern-based insights
+        if (topTags.length > 0) {
+            const topTag = topTags[0];
+            const insight = await generateAISummary({
+                text: `The project has ${topTag.count} decisions related to "${topTag.tag}". This is a critical focus area.`,
+                maxWords: 20,
+                context: 'general'
+            });
+            insightsList.push({
+                type: 'pattern',
+                category: 'top_focus',
+                title: `Primary Focus: ${topTag.tag}`,
+                description: insight,
+                relatedCount: topTag.count
+            });
+        }
+
+        if (topConstraints.length > 0) {
+            const topConstraint = topConstraints[0];
+            insightsList.push({
+                type: 'pattern',
+                category: 'constraint_analysis',
+                title: `Key Constraint: ${topConstraint.constraint}`,
+                description: `This constraint appears in ${topConstraint.count} decisions. Consider documenting mitigation strategies.`,
+                relatedCount: topConstraint.count
+            });
+        }
+
+        // Failure analysis insights
+        if (failures.length > 0 && decisions.length > 0) {
+            const failureRate = Math.round((failures.length / (decisions.length + failures.length)) * 100);
+            if (failureRate > 20) {
+                insightsList.push({
+                    type: 'warning',
+                    category: 'failure_rate',
+                    title: 'High Failure Rate Detected',
+                    description: `${failureRate}% of tracked items are failures. Consider reviewing decision criteria and constraints.`,
+                    relatedCount: failures.length
+                });
+            } else if (failureRate < 10) {
+                insightsList.push({
+                    type: 'success',
+                    category: 'low_failure_rate',
+                    title: 'Low Failure Rate',
+                    description: `Only ${failureRate}% failures. Your decision-making process is working well.`,
+                    relatedCount: failures.length
+                });
+            }
+        }
+
+        // Recommendation generation
+        const recommendations: string[] = [];
+        if (decisions.length < 5) {
+            recommendations.push('Start logging decisions to build a knowledge base for your team');
+        }
+        if (failures.length === 0 && decisions.length > 5) {
+            recommendations.push('Consider documenting failures to learn from past mistakes');
+        }
+        if (topConstraints.length === 0) {
+            recommendations.push('Add constraints to decisions to capture trade-offs and requirements');
+        }
+
+        return sendSuccess(
+            req,
+            res,
+            {
+                insights: insightsList,
+                recommendations,
+                patterns: {
+                    topTags,
+                    topConstraints
+                },
+                summary: {
+                    totalDecisions: decisions.length,
+                    totalFailures: failures.length,
+                    uniqueTags: new Set(decisions.flatMap(d => d.tags || [])).size,
+                    uniqueConstraints: new Set(decisions.flatMap(d => d.constraints || [])).size
+                }
+            },
+            'Project insights generated'
+        );
+    } catch (error) {
+        console.error('PROJECT INSIGHTS ERROR:', error);
+        return sendError(req, res, 500, 'Failed to generate project insights');
     }
 };

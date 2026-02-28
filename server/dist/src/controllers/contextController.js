@@ -21,11 +21,16 @@ const getContexts = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 _count: {
                     select: { decisions: true, failures: true }
                 }
-            }
+            },
+            orderBy: { createdAt: 'desc' }
         });
-        return (0, http_1.sendSuccess)(req, res, contexts, 'Contexts fetched');
+        if (contexts.length === 0) {
+            return (0, http_1.sendSuccess)(req, res, [], 'No projects found');
+        }
+        return (0, http_1.sendSuccess)(req, res, contexts, 'Contexts fetched successfully');
     }
     catch (error) {
+        console.error('GET CONTEXTS ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to fetch contexts');
     }
 });
@@ -114,16 +119,19 @@ exports.getContextById = getContextById;
 const deleteContext = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const contextId = Array.isArray(req.params.contextId) ? req.params.contextId[0] : req.params.contextId;
+        if (!contextId) {
+            return (0, http_1.sendError)(req, res, 400, 'Context ID is required');
+        }
         const context = yield prisma.context.findUnique({ where: { id: contextId } });
         if (!context) {
             return (0, http_1.sendError)(req, res, 404, 'Project not found');
         }
         // Delete context (cascade will delete related decisions and failures)
-        yield prisma.context.delete({ where: { id: contextId } });
-        return (0, http_1.sendSuccess)(req, res, { id: contextId }, 'Project deleted');
+        const deleted = yield prisma.context.delete({ where: { id: contextId } });
+        return (0, http_1.sendSuccess)(req, res, { id: deleted.id }, 'Project deleted successfully');
     }
     catch (error) {
-        console.error('deleteContext error:', error);
+        console.error('DELETE CONTEXT ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to delete project');
     }
 });

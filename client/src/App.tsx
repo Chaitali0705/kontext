@@ -9,6 +9,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const TeamManagementPage = lazy(() => import('./pages/TeamManagementPage'));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
 const KnowledgeGraphPage = lazy(() => import('./pages/KnowledgeGraphPage'));
+const ProjectContextPage = lazy(() => import('./pages/ProjectContextPage'));
 
 export default function App() {
   const store = useContextStore();
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/team/:contextId" element={<TeamManagementPage />} />
         <Route path="/onboarding/:contextId" element={<OnboardingPage />} />
         <Route path="/graph/:contextId" element={<KnowledgeGraphPage />} />
+        <Route path="/context/:contextId" element={<ProjectContextPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

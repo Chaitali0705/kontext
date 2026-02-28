@@ -16,14 +16,22 @@ const http_1 = require("../utils/http");
 const prisma = new client_1.PrismaClient();
 const getTeamMembers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const teamId = Array.isArray(req.params.teamId) ? req.params.teamId[0] : req.params.teamId;
+    if (!teamId) {
+        return (0, http_1.sendError)(req, res, 400, 'Team ID is required');
+    }
     try {
         const members = yield prisma.user.findMany({
             where: { teamId },
-            select: { id: true, email: true, name: true }
+            select: { id: true, email: true, name: true },
+            orderBy: { name: 'asc' }
         });
-        return (0, http_1.sendSuccess)(req, res, members, 'Team members fetched');
+        if (members.length === 0) {
+            return (0, http_1.sendSuccess)(req, res, [], 'No team members found');
+        }
+        return (0, http_1.sendSuccess)(req, res, members, 'Team members fetched successfully');
     }
     catch (error) {
+        console.error('GET TEAM MEMBERS ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to fetch team members');
     }
 });
@@ -31,15 +39,29 @@ exports.getTeamMembers = getTeamMembers;
 const inviteTeamMember = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const teamId = Array.isArray(req.params.teamId) ? req.params.teamId[0] : req.params.teamId;
     const { email, name, role } = req.body;
+    // Input validation
+    if (!teamId) {
+        return (0, http_1.sendError)(req, res, 400, 'Team ID is required');
+    }
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return (0, http_1.sendError)(req, res, 400, 'Valid email address is required');
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+        return (0, http_1.sendError)(req, res, 400, 'Invalid email format');
+    }
+    if (name && typeof name !== 'string') {
+        return (0, http_1.sendError)(req, res, 400, 'Member name must be a text string');
+    }
     try {
         // Check if user exists
-        let user = yield prisma.user.findUnique({ where: { email } });
+        let user = yield prisma.user.findUnique({ where: { email: email.trim() } });
         if (user) {
             // User exists, just update team if needed
             if (user.teamId !== teamId) {
                 user = yield prisma.user.update({
-                    where: { email },
-                    data: { teamId }
+                    where: { email: email.trim() },
+                    data: { teamId, name: name ? name.trim() : user.name }
                 });
             }
         }
@@ -47,16 +69,16 @@ const inviteTeamMember = (req, res) => __awaiter(void 0, void 0, void 0, functio
             // Create new user as invitation
             user = yield prisma.user.create({
                 data: {
-                    email,
-                    name: name || email.split('@')[0],
+                    email: email.trim(),
+                    name: name ? name.trim() : email.split('@')[0],
                     teamId
                 }
             });
         }
-        return (0, http_1.sendSuccess)(req, res, user, 'Invite sent');
+        return (0, http_1.sendSuccess)(req, res, { id: user.id, email: user.email, name: user.name }, 'Team member invited successfully');
     }
     catch (error) {
-        console.error(error);
+        console.error('INVITE TEAM MEMBER ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to invite team member');
     }
 });
@@ -111,13 +133,34 @@ exports.inviteTeamMemberByProject = inviteTeamMemberByProject;
 const removeTeamMember = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const teamId = Array.isArray(req.params.teamId) ? req.params.teamId[0] : req.params.teamId;
     const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+    // Input validation
+    if (!teamId) {
+        return (0, http_1.sendError)(req, res, 400, 'Team ID is required');
+    }
+    if (!userId) {
+        return (0, http_1.sendError)(req, res, 400, 'User ID is required');
+    }
     try {
-        const user = yield prisma.user.deleteMany({
+        // Verify user exists before deletion
+        const userExists = yield prisma.user.findUnique({
+            where: { id: userId }
+        });
+        if (!userExists) {
+            return (0, http_1.sendError)(req, res, 404, 'User not found');
+        }
+        if (userExists.teamId !== teamId) {
+            return (0, http_1.sendError)(req, res, 403, 'User does not belong to this team');
+        }
+        const result = yield prisma.user.deleteMany({
             where: { id: userId, teamId }
         });
-        return (0, http_1.sendSuccess)(req, res, { deleted: user.count }, 'Team member removed');
+        if (result.count === 0) {
+            return (0, http_1.sendError)(req, res, 404, 'Team member not found');
+        }
+        return (0, http_1.sendSuccess)(req, res, { deleted: result.count }, 'Team member removed successfully');
     }
     catch (error) {
+        console.error('REMOVE TEAM MEMBER ERROR:', error);
         return (0, http_1.sendError)(req, res, 500, 'Failed to remove team member');
     }
 });
