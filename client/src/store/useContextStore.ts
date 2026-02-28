@@ -211,7 +211,7 @@ export const useContextStore = create<ContextState>((set, get) => ({
                 headers: {
                     'Content-Type': 'application/json',
                     // 👈 2. PASTE YOUR GROQ KEY HERE (keep the backticks and Bearer word!)
-                    'Authorization': `Bearer const API_KEY = process.env.VITE_API_KEY;` 
+                    'Authorization': `Bearer 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` 
                 },
                 body: JSON.stringify({
                     // 👈 3. Swapped to Llama 3 8B (insanely fast for hackathons)
