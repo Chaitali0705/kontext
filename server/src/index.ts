@@ -29,7 +29,6 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/decisions', decisionRoutes);
 app.use('/api/failures', failureRoutes);
 app.use('/api/teams', teamRoutes);
-app.use('/api/team', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/graph', graphRoutes);

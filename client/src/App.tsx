@@ -19,7 +19,14 @@ export default function App() {
   }, []);
 
   return (
-    <Suspense fallback={<div className="min-h-screen grid place-items-center text-[#8E8E93] bg-[#F2F2F7]">Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen grid place-items-center" style={{ backgroundColor: '#F2F2F7' }}>
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-[#F2F2F7] border-t-[#FF9500] animate-spin mx-auto mb-4"></div>
+          <p style={{ color: '#8E8E93' }}>Loading Kontext...</p>
+        </div>
+      </div>
+    }>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/create-project" element={<ProjectCreationPage />} />

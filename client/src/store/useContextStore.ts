@@ -23,6 +23,7 @@ interface Decision {
     content?: string;
     rationale: string;
     status?: string;
+    tags?: string[];
     constraints?: string[];
     brokenRules?: string[];
     author?: { name: string };

@@ -31,29 +31,29 @@ export const getGraph = async (req: Request, res: Response) => {
             })
         ]);
 
-        const decisionNodes = decisions.map((d) => ({
+        const decisionNodes = await Promise.all(decisions.map(async (d) => ({
             id: `d_${d.id}`,
             label: d.title,
-            summary: generateAISummary(`${d.title}. ${d.rationale || d.content || ''}`, 12),
-            type: 'decision',
+            summary: await generateAISummary(`${d.title}. ${d.rationale || d.content || ''}`, 12),
+            type: 'decision' as const,
             color: '#FF9500'
-        }));
-        const failureNodes = failures.map((f) => ({
+        })));
+        const failureNodes = await Promise.all(failures.map(async (f) => ({
             id: `f_${f.id}`,
             label: f.title,
-            summary: generateAISummary(`${f.title}. ${f.whyFailed}`, 12),
-            type: 'failure',
+            summary: await generateAISummary(`${f.title}. ${f.whyFailed}`, 12),
+            type: 'failure' as const,
             color: '#FF3B30'
-        }));
-        const successNodes = decisions
+        })));
+        const successNodes = await Promise.all(decisions
             .filter((d) => d.outcome === 'success')
-            .map((d) => ({
+            .map(async (d) => ({
                 id: `s_${d.id}`,
                 label: `Success: ${d.title}`,
-                summary: generateAISummary(`Success: ${d.rationale || d.content || ''}`, 10),
-                type: 'success',
+                summary: await generateAISummary(`Success: ${d.rationale || d.content || ''}`, 10),
+                type: 'success' as const,
                 color: '#34C759'
-            }));
+            })));
 
         const edges: Array<{ source: string; target: string; color: string }> = [];
 

@@ -1,16 +1,54 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Users, Plus } from 'lucide-react';
+import { Users, Plus, Shield, Briefcase } from 'lucide-react';
 import { useContextStore } from '../store/useContextStore';
 import MainLayout from '../components/MainLayout';
 import { getApiErrorMessage } from '../services/api';
+
+const TECH_ROLES = [
+  'Frontend Engineer',
+  'Backend Engineer',
+  'Full Stack Engineer',
+  'DevOps Engineer',
+  'QA Engineer',
+  'Solutions Architect',
+  'Database Administrator',
+  'Security Engineer',
+];
+
+const MANAGERIAL_ROLES = [
+  'Engineering Manager',
+  'Tech Lead',
+  'Product Manager',
+  'Project Manager',
+  'Director of Engineering',
+  'VP of Engineering',
+  'CTO',
+];
+
+const GENERAL_ROLES = [
+  'Designer',
+  'Product Designer',
+  'UX Research',
+  'Data Analyst',
+  'Business Analyst',
+  'Marketing',
+];
+
+const ACCESS_LEVELS = [
+  { value: 'view', label: 'View Only', description: 'Can view decisions and failures' },
+  { value: 'edit', label: 'Editor', description: 'Can view and create decisions/failures' },
+  { value: 'admin', label: 'Admin', description: 'Can manage team and content' },
+  { value: 'owner', label: 'Owner', description: 'Full access and project ownership' },
+];
 
 export default function TeamManagementPage() {
   const { contextId } = useParams<{ contextId: string }>();
   const store = useContextStore();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('Editor');
+  const [role, setRole] = useState('Frontend Engineer');
+  const [accessLevel, setAccessLevel] = useState('edit');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -47,11 +85,12 @@ export default function TeamManagementPage() {
     setErrorMessage('');
     setIsSubmitting(true);
     try {
-      await store.inviteTeamMember(trimmedEmail, name.trim() || undefined, role);
+      await store.inviteTeamMember(trimmedEmail, name.trim() || undefined, `${role} (${accessLevel})`);
       setEmail('');
       setName('');
-      setRole('Editor');
-      setSuccessMessage('Invite sent');
+      setRole('Frontend Engineer');
+      setAccessLevel('edit');
+      setSuccessMessage('Invite sent successfully!');
       setTimeout(() => setSuccessMessage(''), 2500);
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));
@@ -87,67 +126,153 @@ export default function TeamManagementPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1">
-              <div className="bg-white border border-black/10 rounded-2xl p-6 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
-                <h3 className="text-lg font-semibold text-[#1C1C1E] mb-4 flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  Invite Team Member
+          <div className="lg:col-span-1">
+              <div className="bg-white border border-black/10 rounded-3xl p-8 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
+                <h3 className="text-2xl font-bold text-[#1C1C1E] mb-1 flex items-center gap-2">
+                  <Plus className="w-6 h-6" />
+                  Invite Team
                 </h3>
+                <p className="text-sm text-[#8E8E93] mb-6">Add new members to your team</p>
 
-                <form onSubmit={handleInvite} className="space-y-4">
+                <form onSubmit={handleInvite} className="space-y-5">
+                  {/* Email */}
                   <div>
-                    <label className="block text-sm font-medium text-[#1C1C1E] mb-2">Email *</label>
+                    <label className="block text-sm font-bold text-[#1C1C1E] mb-2">Email *</label>
                     <input
                       type="email"
                       placeholder="hello@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white border border-black/10 rounded-xl px-3 py-2.5 text-[#1C1C1E] placeholder-[#8E8E93] focus:outline-none focus:border-[#FF9500] transition-colors"
+                      className="w-full bg-[#F2F2F7] border-0 rounded-2xl px-4 py-3.5 text-[#1C1C1E] placeholder-[#8E8E93] focus:outline-none focus:ring-2 focus:ring-[#FF9500] transition-all"
                       required
                     />
                   </div>
 
+                  {/* Name */}
                   <div>
-                    <label className="block text-sm font-medium text-[#1C1C1E] mb-2">Name</label>
+                    <label className="block text-sm font-bold text-[#1C1C1E] mb-2">Name</label>
                     <input
                       type="text"
                       placeholder="John Doe"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-white border border-black/10 rounded-xl px-3 py-2.5 text-[#1C1C1E] placeholder-[#8E8E93] focus:outline-none focus:border-[#FF9500] transition-colors"
+                      className="w-full bg-[#F2F2F7] border-0 rounded-2xl px-4 py-3.5 text-[#1C1C1E] placeholder-[#8E8E93] focus:outline-none focus:ring-2 focus:ring-[#FF9500] transition-all"
                     />
                   </div>
 
+                  {/* Role Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-[#1C1C1E] mb-2">Role</label>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full bg-white border border-black/10 rounded-xl px-3 py-2.5 text-[#1C1C1E] focus:outline-none focus:border-[#FF9500] transition-colors"
-                    >
-                      <option>Editor</option>
-                      <option>Admin</option>
-                      <option>Viewer</option>
-                    </select>
+                    <label className="block text-sm font-bold text-[#1C1C1E] mb-3 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      Role / Position
+                    </label>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-[#8E8E93] px-3 py-1 uppercase tracking-wider">Engineering</p>
+                        {TECH_ROLES.map((r) => (
+                          <label key={r} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#F2F2F7] cursor-pointer transition">
+                            <input
+                              type="radio"
+                              name="role"
+                              value={r}
+                              checked={role === r}
+                              onChange={(e) => setRole(e.target.value)}
+                              className="w-4 h-4 text-[#FF9500] cursor-pointer"
+                            />
+                            <span className="text-sm font-medium text-[#1C1C1E]">{r}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-[#8E8E93] px-3 py-1 uppercase tracking-wider">Management</p>
+                        {MANAGERIAL_ROLES.map((r) => (
+                          <label key={r} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#F2F2F7] cursor-pointer transition">
+                            <input
+                              type="radio"
+                              name="role"
+                              value={r}
+                              checked={role === r}
+                              onChange={(e) => setRole(e.target.value)}
+                              className="w-4 h-4 text-[#FF9500] cursor-pointer"
+                            />
+                            <span className="text-sm font-medium text-[#1C1C1E]">{r}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold text-[#8E8E93] px-3 py-1 uppercase tracking-wider">Other</p>
+                        {GENERAL_ROLES.map((r) => (
+                          <label key={r} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#F2F2F7] cursor-pointer transition">
+                            <input
+                              type="radio"
+                              name="role"
+                              value={r}
+                              checked={role === r}
+                              onChange={(e) => setRole(e.target.value)}
+                              className="w-4 h-4 text-[#FF9500] cursor-pointer"
+                            />
+                            <span className="text-sm font-medium text-[#1C1C1E]">{r}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Access Level Selection */}
+                  <div>
+                    <label className="block text-sm font-bold text-[#1C1C1E] mb-3 flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Access Level
+                    </label>
+                    <div className="space-y-2">
+                      {ACCESS_LEVELS.map((level) => (
+                        <label key={level.value} className="flex items-start gap-3 p-3 rounded-2xl border-2 border-transparent cursor-pointer transition hover:bg-[#F2F2F7]"
+                               style={{
+                                 borderColor: accessLevel === level.value ? '#FF9500' : 'transparent',
+                                 backgroundColor: accessLevel === level.value ? '#FFF4E5' : 'transparent'
+                               }}>
+                          <input
+                            type="radio"
+                            name="access"
+                            value={level.value}
+                            checked={accessLevel === level.value}
+                            onChange={(e) => setAccessLevel(e.target.value)}
+                            className="w-4 h-4 text-[#FF9500] cursor-pointer mt-1 shrink-0"
+                          />
+                          <div className="flex-1">
+                            <div className="font-semibold text-sm text-[#1C1C1E]">{level.label}</div>
+                            <p className="text-xs text-[#8E8E93] mt-0.5">{level.description}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Messages */}
                   {successMessage && (
-                    <div className="bg-[#34C759]/10 border border-[#34C759]/40 rounded-lg p-3 text-[#34C759] text-sm">
-                      {successMessage}
+                    <div className="bg-[#34C759]/15 border border-[#34C759]/40 rounded-2xl p-4 text-[#34C759] text-sm font-medium">
+                      ✓ {successMessage}
                     </div>
                   )}
                   {errorMessage && (
-                    <div className="bg-[#FF3B30]/10 border border-[#FF3B30]/40 rounded-lg p-3 text-[#FF3B30] text-sm">
-                      {errorMessage}
+                    <div className="bg-[#FF3B30]/15 border border-[#FF3B30]/40 rounded-2xl p-4 text-[#FF3B30] text-sm font-medium">
+                      ✕ {errorMessage}
                     </div>
                   )}
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isSubmitting || !email}
-                    className="w-full bg-gradient-to-r from-[#FFB340] to-[#FF9500] hover:brightness-105 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl transition-all"
+                    className="w-full font-bold py-3.5 rounded-2xl transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white shadow-lg"
+                    style={{
+                      background: isSubmitting || !email ? '#E5E5EA' : 'linear-gradient(135deg, #FF9500 0%, #FFAA33 100%)',
+                      color: isSubmitting || !email ? '#8E8E93' : 'white',
+                    }}
                   >
-                    {isSubmitting ? 'Inviting...' : 'Send Invite'}
+                    {isSubmitting ? 'Sending Invite...' : 'Send Invite'}
                   </button>
                 </form>
               </div>

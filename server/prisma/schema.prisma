@@ -55,8 +55,9 @@ model Decision {
   status      String   @default("active") // "active", "warning", "deprecated"
   constraints String[] // Array of strings e.g., ["Under 1000 users", "US-only"]
   brokenRules String[] // Array to track which constraints were invalidated
-  // -----------------------------
-
+  // --- METRICS FIELDS ---
+  timeSavedHours    Int?     // Hours saved by referencing this decision
+  
   alternatives String[]
   outcome      String   @default("pending")
   createdAt    DateTime @default(now())

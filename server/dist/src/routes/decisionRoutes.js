@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const decisionController_1 = require("../controllers/decisionController");
+const router = (0, express_1.Router)();
+router.get('/', decisionController_1.getDecisions);
+router.get('/similar', decisionController_1.getSimilarDecisions);
+router.post('/', decisionController_1.createDecision);
+router.post('/:decisionId/invalidate', decisionController_1.invalidateConstraint);
+router.delete('/:decisionId', decisionController_1.deleteDecision);
+exports.default = router;

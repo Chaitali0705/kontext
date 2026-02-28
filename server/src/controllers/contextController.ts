@@ -9,15 +9,22 @@ const prisma = new PrismaClient();
 export const getContexts = async (req: Request, res: Response) => {
     try {
         const contexts = await prisma.context.findMany({
-        include: {
-            _count: {
-            select: { decisions: true, failures: true }
-            }
-        }
+            include: {
+                _count: {
+                    select: { decisions: true, failures: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
         });
-        return sendSuccess(req, res, contexts, 'Contexts fetched');
+        
+        if (contexts.length === 0) {
+            return sendSuccess(req, res, [], 'No projects found');
+        }
+        
+        return sendSuccess(req, res, contexts, 'Contexts fetched successfully');
     } catch (error) {
-      return sendError(req, res, 500, 'Failed to fetch contexts');
+        console.error('GET CONTEXTS ERROR:', error);
+        return sendError(req, res, 500, 'Failed to fetch contexts');
     }
 };
 
@@ -110,17 +117,21 @@ export const deleteContext = async (req: Request, res: Response) => {
     try {
         const contextId = Array.isArray(req.params.contextId) ? req.params.contextId[0] : req.params.contextId;
         
+        if (!contextId) {
+            return sendError(req, res, 400, 'Context ID is required');
+        }
+        
         const context = await prisma.context.findUnique({ where: { id: contextId } });
         if (!context) {
             return sendError(req, res, 404, 'Project not found');
         }
 
         // Delete context (cascade will delete related decisions and failures)
-        await prisma.context.delete({ where: { id: contextId } });
+        const deleted = await prisma.context.delete({ where: { id: contextId } });
         
-        return sendSuccess(req, res, { id: contextId }, 'Project deleted');
+        return sendSuccess(req, res, { id: deleted.id }, 'Project deleted successfully');
     } catch (error) {
-        console.error('deleteContext error:', error);
+        console.error('DELETE CONTEXT ERROR:', error);
         return sendError(req, res, 500, 'Failed to delete project');
     }
 };

@@ -1,0 +1,190 @@
+"use strict";
+// server/src/utils/llmService.ts
+// LLM Service for AI-powered features in Kontext
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateAISummary = generateAISummary;
+exports.generateDecisionInsights = generateDecisionInsights;
+exports.generateFailureAnalysis = generateFailureAnalysis;
+/**
+ * Generate AI summary using configured LLM provider
+ * Supports: OpenAI, Anthropic, Local LLM, or Mock (fallback)
+ */
+function generateAISummary(request, maxWords) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Handle both object and string inputs for backward compatibility
+        const text = typeof request === 'string' ? request : request.text;
+        const words = typeof request === 'string' ? (maxWords || 15) : (request.maxWords || 15);
+        const context = typeof request === 'object' ? request.context : 'general';
+        const provider = process.env.LLM_PROVIDER || 'mock';
+        switch (provider) {
+            case 'openai':
+                return yield generateWithOpenAI(text, words, context || 'general');
+            case 'anthropic':
+                return yield generateWithAnthropic(text, words, context || 'general');
+            case 'local':
+                return yield generateWithLocalLLM(text, words, context || 'general');
+            default:
+                return generateMockSummary(text, words);
+        }
+    });
+}
+/**
+ * OpenAI integration (GPT-4, GPT-3.5, etc.)
+ * TODO: Install 'openai' package: npm install openai
+ */
+function generateWithOpenAI(text, maxWords, context) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const apiKey = process.env.OPENAI_API_KEY;
+        const model = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+        if (!apiKey) {
+            console.warn('⚠️  OPENAI_API_KEY not set, falling back to mock summaries');
+            return generateMockSummary(text, maxWords);
+        }
+        try {
+            // TODO: Uncomment after installing 'openai' package
+            // const { OpenAI } = require('openai');
+            // const openai = new OpenAI({ apiKey });
+            // const completion = await openai.chat.completions.create({
+            //     model: model,
+            //     messages: [{
+            //         role: 'system',
+            //         content: `You are a concise summarizer for ${context}s. Generate a ${maxWords}-word summary.`
+            //     }, {
+            //         role: 'user',
+            //         content: text
+            //     }],
+            //     max_tokens: maxWords * 2
+            // });
+            // return completion.choices[0].message.content || generateMockSummary(text, maxWords);
+            console.log('OpenAI integration ready but not activated. Using mock.');
+            return generateMockSummary(text, maxWords);
+        }
+        catch (error) {
+            console.error('OpenAI API error:', error);
+            return generateMockSummary(text, maxWords);
+        }
+    });
+}
+/**
+ * Anthropic integration (Claude)
+ * TODO: Install '@anthropic-ai/sdk' package: npm install @anthropic-ai/sdk
+ */
+function generateWithAnthropic(text, maxWords, context) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        const model = process.env.ANTHROPIC_MODEL || 'claude-3-sonnet-20240229';
+        if (!apiKey) {
+            console.warn('⚠️  ANTHROPIC_API_KEY not set, falling back to mock summaries');
+            return generateMockSummary(text, maxWords);
+        }
+        try {
+            // TODO: Uncomment after installing '@anthropic-ai/sdk' package
+            // const { Anthropic } = require('@anthropic-ai/sdk');
+            // const anthropic = new Anthropic({ apiKey });
+            // const message = await anthropic.messages.create({
+            //     model: model,
+            //     max_tokens: maxWords * 2,
+            //     messages: [{
+            //         role: 'user',
+            //         content: `Summarize this ${context} in ${maxWords} words or less:\n\n${text}`
+            //     }]
+            // });
+            // return message.content[0].text || generateMockSummary(text, maxWords);
+            console.log('Anthropic integration ready but not activated. Using mock.');
+            return generateMockSummary(text, maxWords);
+        }
+        catch (error) {
+            console.error('Anthropic API error:', error);
+            return generateMockSummary(text, maxWords);
+        }
+    });
+}
+/**
+ * Local LLM integration (Ollama, LlamaCpp, etc.)
+ */
+function generateWithLocalLLM(text, maxWords, context) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const endpoint = process.env.LOCAL_LLM_ENDPOINT || 'http://localhost:11434';
+        const model = process.env.LOCAL_LLM_MODEL || 'llama2';
+        try {
+            const response = yield fetch(`${endpoint}/api/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: `Summarize this ${context} in exactly ${maxWords} words or less:\n\n${text}`,
+                    stream: false
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Ollama API error: ${response.status}`);
+            }
+            const data = yield response.json();
+            return data.response || generateMockSummary(text, maxWords);
+        }
+        catch (error) {
+            console.error('Local LLM error:', error);
+            console.log('Falling back to mock summary');
+            return generateMockSummary(text, maxWords);
+        }
+    });
+}
+/**
+ * Mock summary generator (extraction-based, no LLM required)
+ * This is the fallback/default implementation - works without any API
+ */
+function generateMockSummary(text, maxWords) {
+    // Extract first meaningful sentence
+    const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
+    if (sentences.length === 0)
+        return text.substring(0, 100);
+    const firstSentence = sentences[0];
+    const words = firstSentence.split(' ');
+    if (words.length <= maxWords) {
+        return firstSentence;
+    }
+    return words.slice(0, maxWords).join(' ') + '...';
+}
+/**
+ * Generate contextual insights for decisions (Advanced AI feature)
+ * TODO: Implement with your LLM
+ */
+function generateDecisionInsights(decision) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return {
+            summary: yield generateAISummary({
+                text: `${decision.title}. ${decision.rationale}`,
+                maxWords: 20,
+                context: 'decision'
+            }),
+            risks: [], // TODO: Implement with LLM
+            recommendations: [] // TODO: Implement with LLM
+        };
+    });
+}
+/**
+ * Generate failure analysis (Advanced AI feature)
+ * TODO: Implement with your LLM
+ */
+function generateFailureAnalysis(failure) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return {
+            summary: yield generateAISummary({
+                text: `${failure.title}. ${failure.whyFailed}`,
+                maxWords: 20,
+                context: 'failure'
+            }),
+            rootCauses: [], // TODO: Implement with LLM
+            preventionSteps: [] // TODO: Implement with LLM
+        };
+    });
+}

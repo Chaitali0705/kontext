@@ -9,7 +9,16 @@ const prisma = new PrismaClient();
 export const getCurrentUser = async (req: Request, res: Response) => {
     try {
         // Try to get any user (for demo purposes)
-        let user = await prisma.user.findFirst();
+        let user = await prisma.user.findFirst({
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                teamId: true,
+                onboardingStep: true,
+                onboardingCompletedAt: true
+            }
+        });
         
         if (!user) {
             // Create a default user if none exists
@@ -19,11 +28,19 @@ export const getCurrentUser = async (req: Request, res: Response) => {
                     name: 'Demo User',
                     teamId: (await prisma.team.findFirst())?.id || 
                             (await prisma.team.create({ data: { name: 'Demo Team' } })).id
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    teamId: true,
+                    onboardingStep: true,
+                    onboardingCompletedAt: true
                 }
             });
         }
         
-        const onboardingStep = (user as any).onboardingStep ?? (user.onboardingCompletedAt ? 4 : 1);
+        const onboardingStep = user.onboardingStep ?? (user.onboardingCompletedAt ? 4 : 1);
         return sendSuccess(req, res, { ...user, onboardingStep }, 'Current user fetched');
     } catch (error) {
         console.error(error);
@@ -73,7 +90,15 @@ export const patchOnboarding = async (req: Request, res: Response) => {
             data: {
                 onboardingCompletedAt: completed || step === 4 ? new Date() : null,
                 onboardingStep: step
-            } as any
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                teamId: true,
+                onboardingStep: true,
+                onboardingCompletedAt: true
+            }
         });
 
         return sendSuccess(

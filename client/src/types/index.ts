@@ -14,8 +14,13 @@ export interface Context {
 export interface Decision {
     id: string;
     title: string;
+    content: string;
+    rationale: string;
     status: 'active' | 'revisit_needed' | 'deprecated';
     createdAt: string;
+    tags: string[];
+    constraints: string[];
+    author?: { name: string };
 }
 
 export interface SimilarDecision {
@@ -31,12 +36,22 @@ export interface MetricsTrendPoint {
     failures: number;
 }
 
+export interface MetricsInsight {
+    type: 'success' | 'info' | 'warning';
+    message: string;
+}
+
 export interface Metrics {
     moatScore: number;
     decisionsCount: number;
     failuresCount: number;
     reuseRate: number;
     trend: MetricsTrendPoint[];
+    timeSavedHours: number;
+    timeSavedDays: number;
+    graphDensity: number;
+    mostConnectedNode?: { signature: string; count: number } | null;
+    insights: MetricsInsight[];
 }
 
 export interface GraphNode {
