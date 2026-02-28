@@ -52,9 +52,9 @@ export default function TeamManagementPage() {
 
   // 3. Fetch team members
   useEffect(() => {
-    if (store.activeContext?.teamId || store.activeContext?.team_id) {
-        store.fetchTeamMembers(store.activeContext.teamId || store.activeContext.team_id);
-    }
+    if (store.activeContext?.teamId) {
+    store.fetchTeamMembers(store.activeContext.teamId);
+}
   }, [store.activeContext, store]);
 
   const handleInvite = async (e: React.FormEvent) => {

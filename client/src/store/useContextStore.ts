@@ -139,7 +139,7 @@ export const useContextStore = create<ContextState>((set, get) => ({
         }
     },
 
-    createProject: async (name: string, description?: string, teamSize?: string) => {
+    createProject: async (name: string, description?: string, _teamSize?: string) => {
         set({ isLoading: true });
         const { data: { session } } = await supabase.auth.getSession();
         
