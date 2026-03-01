@@ -322,7 +322,7 @@ export const useContextStore = create<ContextState>((set, get) => ({
         Based on this data, provide 3 brief, high-value, and slightly candid architectural insights or warnings for this team. Format as a short markdown list.`;
 
         try {
-            const res = await fetch('/groq-api/chat/completions', {
+            const res = await fetch(`${window.location.origin}/grok-proxy/v1/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
