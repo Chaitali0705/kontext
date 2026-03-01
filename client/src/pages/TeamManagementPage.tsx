@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, Plus, Shield, Briefcase } from 'lucide-react';
+import { Users, Plus, Shield, Briefcase, Trash2 } from 'lucide-react';
 import { useContextStore } from '../store/useContextStore';
 import MainLayout from '../components/MainLayout';
 import clsx from 'clsx';
@@ -81,8 +81,9 @@ export default function TeamManagementPage() {
       setName('');
       setSelectedRole('Frontend Engineer');
       setAccessLevel('Editor');
-    } catch (error) {
-      setErrorMessage("Failed to send invite");
+    } catch (error: any) {
+      // 👈 This will now grab our strict error message from the store!
+      setErrorMessage(error.message || "Failed to send invite");
     } finally {
       setIsSubmitting(false);
     }
@@ -237,13 +238,36 @@ export default function TeamManagementPage() {
                   <div className="text-sm text-[#8E8E93] py-4">No team members yet.</div>
                 ) : (
                   store.teamMembers.map((member: any) => (
-                    <div key={member.id} className="flex items-center gap-4 p-4 border border-black/5 rounded-2xl bg-[#F9F9F9]">
-                      <div className="w-10 h-10 rounded-full bg-[#FF9500] flex items-center justify-center text-white font-bold">
+                    // 👇 Added 'group' here so we can detect hovers!
+                    <div key={member.id} className="flex items-center gap-4 p-4 border border-black/5 rounded-2xl bg-[#F9F9F9] group transition-colors hover:bg-white hover:border-black/10 hover:shadow-sm">
+                      <div className={clsx(
+                        "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0",
+                        member.status === 'pending' ? "bg-[#8E8E93]" : "bg-[#FF9500]"
+                      )}>
                         {(member.name || member.email).charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <div className="text-sm font-bold text-[#1C1C1E]">{member.name || 'Invited User'}</div>
-                        <div className="text-xs text-[#8E8E93]">{member.email}</div>
+                      <div className="flex-1 flex items-center justify-between min-w-0">
+                        <div className="truncate pr-4">
+                          <div className="text-sm font-bold text-[#1C1C1E] truncate">{member.name || 'Invited User'}</div>
+                          <div className="text-xs text-[#8E8E93] truncate">{member.email}</div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 shrink-0">
+                          {member.status === 'pending' && (
+                            <span className="px-2.5 py-1 bg-[#FF9500]/10 text-[#FF9500] text-[10px] font-bold uppercase tracking-wider rounded-md border border-[#FF9500]/20">
+                              Pending
+                            </span>
+                          )}
+                          
+                          {/* 🔴 THE REMOVE BUTTON (Hidden until hovered) */}
+                          <button
+                            onClick={() => store.removeTeamMember(member.id)}
+                            className="p-1.5 text-[#8E8E93] hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                            title="Remove member"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))

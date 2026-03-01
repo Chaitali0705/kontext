@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import type { Context } from '../types';
 import { createClient } from '@supabase/supabase-js';
 
-// 🔴 PASTE YOUR SUPABASE KEYS HERE 🔴
-const SUPABASE_URL = 'https://cgfqlmwlkrvkcpbrmper.supabase.co';
+const SUPABASE_URL = `${window.location.origin}/supabase-proxy`; 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnZnFsbXdsa3J2a2NwYnJtcGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDYwNzksImV4cCI6MjA4Nzc4MjA3OX0.wev0IxY2mqhFPqno-uGQwzlEeaT2hQ5QnaISrJiymaU';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -22,7 +21,7 @@ interface ContextState {
     isLoading: boolean;
     onboardingCompleted: boolean;
     authError: string | null;
-    
+    pendingInvites: any[]; fetchPendingInvites: () => Promise<void>; acceptInvite: (id: string) => Promise<void>; declineInvite: (id: string) => Promise<void>;
     // AI States
     grokInsights: string | null;
     isGeneratingInsights: boolean;
@@ -35,6 +34,7 @@ interface ContextState {
     generateGrokInsights: () => Promise<void>;
     generateGraphInsights: () => Promise<void>;
     generateContextSummary: () => Promise<void>;
+    removeTeamMember: (memberId: string) => Promise<void>;
     
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
@@ -114,20 +114,65 @@ export const useContextStore = create<ContextState>((set, get) => ({
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { set({ isLoading: false }); return; }
 
-        const { data } = await supabase.from('contexts')
-            .select('*')
-            .eq('user_id', session.user.id) 
-            .order('created_at', { ascending: true });
-            
-        set({ contexts: data || [], isLoading: false });
+        // 1. Get projects the user created
+        const { data: ownedContexts } = await supabase.from('contexts').select('*').eq('user_id', session.user.id);
+
+        // 2. Get projects the user ACCEPTED an invite to
+        const { data: memberships } = await supabase.from('team_members')
+            .select('context_id')
+            .eq('email', session.user.email)
+            .eq('status', 'accepted'); // 👈 ONLY fetch accepted ones!
         
-        if (data && data.length > 0 && !get().activeContext) {
-            set({ activeContext: data[0] });
-            get().fetchDecisions(data[0].id);
-            get().fetchFailures(data[0].id);
-        } else if (data && data.length === 0) {
+        let invitedContexts: any[] = [];
+        if (memberships && memberships.length > 0) {
+            const contextIds = memberships.map(m => m.context_id);
+            const { data } = await supabase.from('contexts').select('*').in('id', contextIds);
+            invitedContexts = data || [];
+        }
+
+        const allContexts = [...(ownedContexts || []), ...invitedContexts];
+        const uniqueContexts = Array.from(new Map(allContexts.map(item => [item.id, item])).values());
+        uniqueContexts.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        set({ contexts: uniqueContexts, isLoading: false });
+        
+        if (uniqueContexts.length > 0 && !get().activeContext) {
+            set({ activeContext: uniqueContexts[0] });
+            get().fetchDecisions(uniqueContexts[0].id);
+            get().fetchFailures(uniqueContexts[0].id);
+            get().fetchTeamMembers(uniqueContexts[0].id);
+        } else if (uniqueContexts.length === 0) {
             set({ activeContext: null, decisions: [], failures: [] });
         }
+
+        // 👈 Also fetch the pending invites in the background!
+        await get().fetchPendingInvites();
+    },
+
+    // ===== TEAM & INBOX (FULLY FUNCTIONAL) =====
+    pendingInvites: [], // Add this to your interface at the top later if TS complains
+    
+    fetchPendingInvites: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        
+        // Supabase magic: Join the contexts table so we get the project name!
+        const { data } = await supabase.from('team_members')
+            .select(`id, role, created_at, contexts ( id, name, description )`)
+            .eq('email', session.user.email)
+            .eq('status', 'pending');
+            
+        set({ pendingInvites: data || [] });
+    },
+    acceptInvite: async (inviteId: string) => {
+        await supabase.from('team_members').update({ status: 'accepted' }).eq('id', inviteId);
+        await get().fetchPendingInvites(); // Clear it from inbox
+        await get().fetchContexts();       // Load the new project into the sidebar!
+    },
+
+    declineInvite: async (inviteId: string) => {
+        await supabase.from('team_members').delete().eq('id', inviteId);
+        await get().fetchPendingInvites(); // Clear it from inbox
     },
 
     setActiveContext: (context) => {
@@ -136,6 +181,7 @@ export const useContextStore = create<ContextState>((set, get) => ({
         if (!currentContext || currentContext.id !== context.id) {
             get().fetchDecisions(context.id);
             get().fetchFailures(context.id);
+            
         }
     },
 
@@ -164,9 +210,60 @@ export const useContextStore = create<ContextState>((set, get) => ({
     },
 
     // ===== TEAM (Mocked for Hackathon MVP) =====
-    fetchTeamMembers: async () => { set({ teamMembers: [] }); },
-    inviteTeamMember: async () => { console.log("Invites handled via Supabase Auth emails in V2"); },
+    fetchTeamMembers: async (contextId: string) => { 
+        const { data } = await supabase.from('team_members')
+            .select('*')
+            .eq('context_id', contextId)
+            .order('created_at', { ascending: true });
+        set({ teamMembers: data || [] }); 
+    },
 
+    inviteTeamMember: async (email: string, name?: string) => { 
+        const state = get();
+        if (!state.activeContext) return;
+
+        const targetEmail = email.toLowerCase().trim();
+
+        // 1. STRICT CHECK: Ask the database if this exact email is already in this exact project
+        const { data: existingMember } = await supabase
+            .from('team_members')
+            .select('id')
+            .eq('context_id', state.activeContext.id)
+            .eq('email', targetEmail)
+            .maybeSingle(); // maybeSingle doesn't crash if it finds nothing
+
+        if (existingMember) {
+            // If they are found, throw a hard error to stop the process!
+            throw new Error("This user is already on the team or has a pending invite.");
+        }
+
+        // 2. If they are completely new, send the invite
+        const { data, error } = await supabase.from('team_members').insert({
+            context_id: state.activeContext.id,
+            email: targetEmail,
+            name: name || 'Invited User',
+            role: 'Editor',
+            status: 'pending' 
+        }).select().single();
+
+        if (error) throw error;
+        
+        // 3. Update the UI
+        set((state) => ({ teamMembers: [...state.teamMembers, data] }));
+    },
+    removeTeamMember: async (memberId: string) => {
+        // 1. Delete them from the database
+        const { error } = await supabase.from('team_members').delete().eq('id', memberId);
+        if (error) {
+            console.error("Failed to remove member:", error);
+            throw error;
+        }
+        
+        // 2. Instantly remove them from the UI list
+        set((state) => ({ 
+            teamMembers: state.teamMembers.filter(m => m.id !== memberId) 
+        }));
+    },
     // ===== DECISIONS & FAILURES =====
     fetchDecisions: async (contextId: string) => {
         const { data } = await supabase.from('decisions').select('*').eq('context_id', contextId).order('created_at', { ascending: false });
@@ -271,14 +368,30 @@ export const useContextStore = create<ContextState>((set, get) => ({
 
         set({ isGeneratingGraphInsights: true, graphInsights: null });
 
-        const prompt = `You are an AI analyzing a knowledge graph for a software project named "${state.activeContext.name}". 
-        The graph contains the following nodes:
-        Decisions Made: ${state.decisions.map(d => d.title).join(', ')}
-        Failures Logged: ${state.failures.map(f => f.title).join(', ')}
-        
-        Analyze the implicit relationships between these nodes. What is the overarching story of this architecture? What hidden patterns connect these decisions and failures? 
-        Keep your response to two short, highly analytical paragraphs formatted in markdown.`;
+        // Extract real team names so the AI knows exactly who is here
+        // 1. We pre-format the exact bulleted list we want in JavaScript
+        const teamDetails = state.teamMembers.length > 0 
+            ? state.teamMembers.map((m: any) => `- ${m.name || 'Invited User'} (${m.email})`).join('\n') 
+            : '- No team members added yet.';
 
+        // 2. We force the AI to use our exact string as a template
+        const prompt = `You are a strict copy-paste formatter. Copy the template below EXACTLY. Replace the bracketed instructions with bullet points using the provided data. 
+        DO NOT invent names. DO NOT create tables. DO NOT add any greetings.
+
+        TEMPLATE TO COPY:
+        
+        ### Project Overview
+        [Write 3 bullet points summarizing this project: ${state.activeContext.name} - ${state.activeContext.description || 'No description'}]
+
+        ### Key Architectural Decisions
+        [Turn these decisions into concise bullet points: ${state.decisions.map((d: any) => `${d.title} (${d.rationale})`).join(' | ')}]
+
+        ### Known Pitfalls to Avoid
+        [Turn these failures into concise bullet points: ${state.failures.map((f: any) => `${f.title} (${f.whyFailed})`).join(' | ')}]
+
+        ### Team Contacts
+        ${teamDetails}
+        `;
         try {
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
