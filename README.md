@@ -5,6 +5,30 @@
 Kontext helps teams turn everyday decisions and setbacks into reusable context that increases value over time. Build your team's competitive moat through systematic knowledge capture.
 
 ---
+🚀 Why Kontext Matters
+Most tools store information.
+Kontext stores context.
+| Traditional Tools | Kontext |
+|-------------------|---------|
+| Store documentation | Capture decision reasoning |
+| Manage tasks | Capture lessons learned |
+| Static knowledge | Compounding intelligence |
+| Project memory | Organizational memory |
+
+Teams lose decision context all the time.
+Slack threads disappear.
+Docs get outdated.
+People leave the company.
+Months later, someone asks:
+“Why did we make this decision?”
+And no one remembers.
+This leads to:
+• repeated mistakes
+• duplicated discussions
+• slow onboarding
+• lost institutional knowledge
+Kontext captures the reasoning behind decisions, turning everyday work into reusable team intelligence.
+Instead of starting from zero every project, teams build a compounding knowledge moat.
 
 ## 🌟 Features
 
@@ -46,6 +70,46 @@ Kontext helps teams turn everyday decisions and setbacks into reusable context t
 - **HTTP Client**: Axios
 
 ---
+🏗 System Architecture
+Kontext uses a modern full-stack architecture designed for scalability and modular AI integration
+┌─────────────────────┐
+                 │      Frontend       │
+                 │  React + TypeScript │
+                 │  Tailwind + Vite    │
+                 └─────────┬───────────┘
+                           │
+                           │ API Requests
+                           │
+                 ┌─────────▼───────────┐
+                 │      Backend        │
+                 │   Node.js + Express │
+                 │     REST API        │
+                 └─────────┬───────────┘
+                           │
+                           │ ORM
+                           │
+                 ┌─────────▼───────────┐
+                 │      Database       │
+                 │   PostgreSQL (Neon) │
+                 │      Prisma ORM     │
+                 └─────────┬───────────┘
+                           │
+                           │ Context Data
+                           │
+                 ┌─────────▼───────────┐
+                 │      AI Layer       │
+                 │  OpenAI / Anthropic │
+                 │   Local LLMs        │
+                 └─────────┬───────────┘
+                           │
+                           │ Insights
+                           │
+                 ┌─────────▼───────────┐
+                 │   Knowledge Graph   │
+                 │ Decisions + Failures│
+                 │ Relationships       │
+                 └─────────────────────┘
+
 
 ## 🚀 Quick Start
 
@@ -178,6 +242,12 @@ Navigate to the **"Graph"** page to visualize your knowledge:
 - **Color-Coded** - Orange (decisions), Red (failures), Green (successes)
 
 ---
+ Smart Insights
+When teams log a new decision, Kontext automatically surfaces:
+similar past decisions
+related failures
+relevant historical context
+This helps teams avoid duplicate work and repeated mistakes.
 
 ## 🏗 Project Structure
 
